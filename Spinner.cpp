@@ -359,7 +359,7 @@ Spinner::MessageReceived(BMessage *msg)
 			// new value is in range, so set it and go
 			SetValue(newvalue);
 			Invoke();
-			Draw(Bounds());
+			Invalidate();
 			ValueChanged(Value());
 		} else {
 			// new value is out of bounds. Clip to range if current value is not
@@ -367,12 +367,12 @@ Spinner::MessageReceived(BMessage *msg)
 			if (newvalue < GetMin() && Value() != GetMin()) {
 				SetValue(GetMin());
 				Invoke();
-				Draw(Bounds());
+				Invalidate();
 				ValueChanged(Value());
 			} else if (newvalue>GetMax() && Value() != GetMax()) {
 				SetValue(GetMax());
 				Invoke();
-				Draw(Bounds());
+				Invalidate();
 				ValueChanged(Value());
 			} else {
 				char string[100];
@@ -515,7 +515,7 @@ SpinnerPrivateData::ButtonRepeaterThread(void *data)
 			// new value is in range, so set it and go
 			sp->SetValue(newvalue);
 			sp->Invoke();
-			sp->Draw(sp->Bounds());
+			sp->Invalidate();
 			sp->ValueChanged(sp->Value());
 		} else {
 			// new value is out of bounds. Clip to range if current value is not
@@ -523,13 +523,13 @@ SpinnerPrivateData::ButtonRepeaterThread(void *data)
 			if (newvalue<sp->GetMin() && sp->Value() != sp->GetMin()) {
 				sp->SetValue(sp->GetMin());
 				sp->Invoke();
-				sp->Draw(sp->Bounds());
+				sp->Invalidate();
 				sp->ValueChanged(sp->Value());
 			} else  if (newvalue>sp->GetMax() && sp->Value() != sp->GetMax())
 			{
 				sp->SetValue(sp->GetMax());
 				sp->Invoke();
-				sp->Draw(sp->Bounds());
+				sp->Invalidate();
 				sp->ValueChanged(sp->Value());
 			}
 		}
@@ -574,71 +574,7 @@ SpinnerArrowButton::MouseDown(BPoint pt)
 {
 	if (fEnabled == false)
 		return;
-	
-/*	fMouseDown = true;
-	Draw(Bounds());
 
-	if (fParent)
-	{
-		int32 step = fParent->GetSteps();
-				
-		int32 newvalue = fParent->Value();
-		
-		if (fDirection == ARROW_UP)
-		{
-			fParent->fPrivateData->fArrowDown = ARROW_UP;
-			newvalue += step;
-		}
-		else
-		{
-			fParent->fPrivateData->fArrowDown = ARROW_DOWN;
-			newvalue -= step;
-		}
-
-		if ( newvalue >= fParent->GetMin() && newvalue <= fParent->GetMax())
-		{
-			// new value is in range, so set it and go
-			fParent->SetValue(newvalue);
-			fParent->Invoke();
-			fParent->Draw(fParent->Bounds());
-			fParent->ValueChanged(fParent->Value());
-		}
-		else
-		{
-			// new value is out of bounds. Clip to range if current value is not
-			// at the end of its range
-			if (newvalue<fParent->GetMin() && fParent->Value() != fParent->GetMin())
-			{
-				fParent->SetValue(fParent->GetMin());
-				fParent->Invoke();
-				fParent->Draw(fParent->Bounds());
-				fParent->ValueChanged(fParent->Value());
-			}
-			else
-			if (newvalue>fParent->GetMax() && fParent->Value() != fParent->GetMax())
-			{
-				fParent->SetValue(fParent->GetMax());
-				fParent->Invoke();
-				fParent->Draw(fParent->Bounds());
-				fParent->ValueChanged(fParent->Value());
-			}
-			else
-			{
-				// cases which go here are if new value is <minimum and value already at
-				// minimum or if > maximum and value already at maximum
-				return;
-			}
-		}
-
-		if (fParent->fPrivateData->fRepeaterID == -1)
-		{
-			fParent->fPrivateData->fExitRepeater = false;
-			fParent->fPrivateData->fRepeaterID = spawn_thread(fParent->fPrivateData->ButtonRepeaterThread,
-				"scroll repeater",B_NORMAL_PRIORITY,fParent);
-			resume_thread(fParent->fPrivateData->fRepeaterID);
-		}
-	}
-*/
 	if (!IsEnabled())
 		return;
 
@@ -673,7 +609,7 @@ SpinnerArrowButton::MouseDown(BPoint pt)
 				// new value is in range, so set it and go
 				fParent->SetValue(newvalue);
 				fParent->Invoke();
-//				fParent->Draw(fParent->Bounds());
+//				fParent->Invalidate();
 				fParent->ValueChanged(fParent->Value());
 			} else {
 				// new value is out of bounds. Clip to range if current value is not
@@ -682,13 +618,13 @@ SpinnerArrowButton::MouseDown(BPoint pt)
 						fParent->Value() != fParent->GetMin()) {
 					fParent->SetValue(fParent->GetMin());
 					fParent->Invoke();
-//					fParent->Draw(fParent->Bounds());
+//					fParent->Invalidate();
 					fParent->ValueChanged(fParent->Value());
 				} else if (newvalue>fParent->GetMax() && 
 							fParent->Value() != fParent->GetMax()) {
 					fParent->SetValue(fParent->GetMax());
 					fParent->Invoke();
-//					fParent->Draw(fParent->Bounds());
+//					fParent->Invalidate();
 					fParent->ValueChanged(fParent->Value());
 				} else {
 					// cases which go here are if new value is <minimum and value already at
@@ -728,7 +664,7 @@ SpinnerArrowButton::MouseUp(BPoint pt)
 			fParent->fPrivateData->fArrowDown = ARROW_NONE;
 			fParent->fPrivateData->fExitRepeater = true;
 		}
-		Draw(Bounds());
+		Invalidate();
 	}
 }
 
@@ -749,7 +685,7 @@ SpinnerArrowButton::MouseMoved(BPoint pt, uint32 transit, const BMessage *msg)
 			fMouseDown = false;
 		else
 			fMouseDown = true;
-		Draw(Bounds());
+		Invalidate();
 	}
 	
 	if (transit == B_EXITED_VIEW || transit == B_OUTSIDE_VIEW)
@@ -762,41 +698,24 @@ SpinnerArrowButton::Draw(BRect update)
 {
 	rgb_color c = ui_color(B_PANEL_BACKGROUND_COLOR);
 	BRect r(Bounds());
-	const rgb_color arrowColor= {128,128,128};
-	/*
-	rgb_color light, dark, normal,arrow,arrow2;
-	if (fMouseDown) {	
-		light = tint_color(c,B_DARKEN_3_TINT);
-		arrow2 = dark = tint_color(c,B_LIGHTEN_MAX_TINT);
-		normal = c;
-		arrow = tint_color(c,B_DARKEN_MAX_TINT);
-	} else if (fEnabled) {
-		arrow2 = light = tint_color(c,B_LIGHTEN_MAX_TINT);
-		dark = tint_color(c,B_DARKEN_3_TINT);
-		normal = c;
-		arrow = tint_color(c,B_DARKEN_MAX_TINT);
-	} else {
-		arrow2 = light = tint_color(c,B_LIGHTEN_1_TINT);
-		dark = tint_color(c,B_DARKEN_1_TINT);
-		normal = c;
-		arrow = tint_color(c,B_DARKEN_1_TINT);
-	}
-	*/
-
-	SetDrawingMode(B_OP_ALPHA);
+	int32 flags = !fEnabled ? BControlLook::B_DISABLED : 0;
+	float tint = fMouseDown ? B_DARKEN_3_TINT : B_DARKEN_1_TINT;
+	
+	SetDrawingMode(B_OP_COPY);
+	
 	switch (fDirection) {
 		case ARROW_LEFT:
-			be_control_look->DrawArrowShape(this,r,r,arrowColor,
-				BControlLook::B_LEFT_ARROW,B_DARKEN_3_TINT);
+			be_control_look->DrawArrowShape(this,r,update,c,
+				BControlLook::B_LEFT_ARROW, flags, tint);
 		case ARROW_RIGHT:
-			be_control_look->DrawArrowShape(this,r,r,arrowColor,
-				BControlLook::B_RIGHT_ARROW,B_DARKEN_3_TINT);
+			be_control_look->DrawArrowShape(this,r,update,c,
+				BControlLook::B_RIGHT_ARROW, flags, tint);
 		case ARROW_UP:
-			be_control_look->DrawArrowShape(this,r,r,arrowColor,
-				BControlLook::B_UP_ARROW, B_DARKEN_3_TINT);
+			be_control_look->DrawArrowShape(this,r,update,c,
+				BControlLook::B_UP_ARROW, flags, tint);
 		default:
-			be_control_look->DrawArrowShape(this,r,r,arrowColor,
-				BControlLook::B_DOWN_ARROW, B_DARKEN_3_TINT);
+			be_control_look->DrawArrowShape(this,r,update,c,
+				BControlLook::B_DOWN_ARROW, flags, tint);
 	}
 }
 
