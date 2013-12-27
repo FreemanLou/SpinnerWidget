@@ -16,6 +16,7 @@
 #include <MessageFilter.h>
 #include <PropertyInfo.h>
 
+#include <math.h>
 
 static property_info sProperties[] = {
 	{ "MinValue", { B_GET_PROPERTY, 0 }, { B_DIRECT_SPECIFIER, 0 },
@@ -699,9 +700,11 @@ SpinnerArrowButton::Draw(BRect update)
 	rgb_color c = ui_color(B_PANEL_BACKGROUND_COLOR);
 	BRect r(Bounds());
 	int32 flags = !fEnabled ? BControlLook::B_DISABLED : 0;
-	float tint = fMouseDown ? B_DARKEN_3_TINT : B_DARKEN_1_TINT;
+	float tint = fMouseDown ? B_DARKEN_MAX_TINT : B_DARKEN_3_TINT;
 	
+	PushState();
 	SetDrawingMode(B_OP_COPY);
+	SetLowColor(tint_color(c, B_LIGHTEN_MAX_TINT));
 	
 	switch (fDirection) {
 		case ARROW_LEFT:
@@ -717,6 +720,7 @@ SpinnerArrowButton::Draw(BRect update)
 			be_control_look->DrawArrowShape(this,r,update,c,
 				BControlLook::B_DOWN_ARROW, flags, tint);
 	}
+	PopState();
 }
 
 
