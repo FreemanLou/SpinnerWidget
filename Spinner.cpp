@@ -699,29 +699,35 @@ SpinnerArrowButton::Draw(BRect update)
 {
 	rgb_color c = ui_color(B_PANEL_BACKGROUND_COLOR);
 	BRect r(Bounds());
-	int32 flags = !fEnabled ? BControlLook::B_DISABLED : 0;
-	float tint = fMouseDown ? B_DARKEN_MAX_TINT : B_DARKEN_3_TINT;
-	
-	PushState();
-	SetDrawingMode(B_OP_COPY);
-	SetLowColor(tint_color(c, B_LIGHTEN_MAX_TINT));
-	
-	switch (fDirection) {
-		case ARROW_LEFT:
-			be_control_look->DrawArrowShape(this,r,update,c,
-				BControlLook::B_LEFT_ARROW, flags, tint);
-		case ARROW_RIGHT:
-			be_control_look->DrawArrowShape(this,r,update,c,
-				BControlLook::B_RIGHT_ARROW, flags, tint);
-		case ARROW_UP:
-			be_control_look->DrawArrowShape(this,r,update,c,
-				BControlLook::B_UP_ARROW, flags, tint);
-		default:
-			be_control_look->DrawArrowShape(this,r,update,c,
-				BControlLook::B_DOWN_ARROW, flags, tint);
+
+	rgb_color arrow;
+	if (!fEnabled)
+		arrow = tint_color(c, B_DARKEN_1_TINT);
+	else if (fMouseDown)
+		arrow = tint_color(c, B_DARKEN_MAX_TINT);
+	else
+		arrow = tint_color(c, B_DARKEN_3_TINT);
+		
+	BPoint point1;
+	BPoint point2;
+	BPoint point3;
+	if (fDirection == ARROW_UP) {
+		point1 = BPoint(roundf((r.RightTop().x - r.LeftTop().x )/2),
+			r.RightTop().y);
+		point2 = r.LeftBottom();
+		point3 = r.RightBottom();	
+	} else {
+		point1 = r.LeftTop();
+		point2 = r.RightTop();
+		point3 = BPoint(roundf((r.RightBottom().x - r.LeftBottom().x) /2),
+			r.RightBottom().y);
 	}
-	PopState();
-}
+	
+	rgb_color highColor = HighColor();
+	SetHighColor(arrow);
+	FillTriangle(point1, point2, point3);
+	SetHighColor(highColor);
+}	
 
 
 void
