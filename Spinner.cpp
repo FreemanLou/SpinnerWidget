@@ -6,6 +6,7 @@
 	Original BScrollBarButton class courtesy Haiku project
 */
 #include "Spinner.h"
+#include <ControlLook.h>
 #include <String.h>
 #include <ScrollBar.h>
 #include <Window.h>
@@ -152,7 +153,8 @@ public:
 
 Spinner::Spinner(BRect frame, const char *name, const char *label, BMessage *msg,
 				uint32 resize,uint32 flags)
- :	BControl(frame,name,label,msg,resize,flags),
+	:
+	BControl(frame,name,label,msg,resize,flags),
 	fStep(1),
 	fMin(0),
 	fMax(100)
@@ -162,7 +164,8 @@ Spinner::Spinner(BRect frame, const char *name, const char *label, BMessage *msg
 
 
 Spinner::Spinner(BMessage *data)
- :	BControl(data)
+	:
+	BControl(data)
 {
 	if (data->FindInt32("_min",&fMin) != B_OK)
 		fMin = 0;
@@ -170,6 +173,18 @@ Spinner::Spinner(BMessage *data)
 		fMin = 100;
 	if (data->FindInt32("_step",&fStep) != B_OK)
 		fMin = 1;
+	_InitObject();
+}
+
+
+Spinner::Spinner(const char *name, const char *label, BMessage *msg,
+	uint32 flags)
+	:
+	BControl(name, label, msg,flags),
+	fStep(1),
+	fMin(0),
+	fMax(100)
+{
 	_InitObject();
 }
 
@@ -544,35 +559,8 @@ SpinnerArrowButton::SpinnerArrowButton(BPoint location, const char *name,
 	fDirection = dir;
 	fEnabled = true;
 	fHeight = height;
-	BRect r = Bounds();
-	
-	switch (fDirection) {
-		case ARROW_LEFT: {
-			fTrianglePoint1.Set(r.left + 3,(r.top + r.bottom) / 2);
-			fTrianglePoint2.Set(r.right - 3,r.top + 2);
-			fTrianglePoint3.Set(r.right - 3,r.bottom - 2);
-			break;
-		}
-		case ARROW_RIGHT: {
-			fTrianglePoint1.Set(r.left + 3,r.bottom - 2);
-			fTrianglePoint2.Set(r.left + 3,r.top + 2);
-			fTrianglePoint3.Set(r.right - 3,(r.top + r.bottom) / 2);
-			break;
-		}
-		case ARROW_UP: {
-			fTrianglePoint1.Set(r.left + 3,r.bottom - 2);
-			fTrianglePoint2.Set((r.left + r.right) / 2,r.top + 2);
-			fTrianglePoint3.Set(r.right - 3,r.bottom - 2);
-			break;
-		}
-		default: {
-			fTrianglePoint1.Set(r.left + 3,r.top + 2);
-			fTrianglePoint2.Set(r.right - 3,r.top + 2);
-			fTrianglePoint3.Set((r.left + r.right) / 2,r.bottom - 2);
-			break;
-		}
-	}
 	fMouseDown = false;
+	SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
 }
 
 
@@ -774,7 +762,8 @@ SpinnerArrowButton::Draw(BRect update)
 {
 	rgb_color c = ui_color(B_PANEL_BACKGROUND_COLOR);
 	BRect r(Bounds());
-	
+	const rgb_color arrowColor= {128,128,128};
+	/*
 	rgb_color light, dark, normal,arrow,arrow2;
 	if (fMouseDown) {	
 		light = tint_color(c,B_DARKEN_3_TINT);
@@ -792,27 +781,23 @@ SpinnerArrowButton::Draw(BRect update)
 		normal = c;
 		arrow = tint_color(c,B_DARKEN_1_TINT);
 	}
-	
-	r.InsetBy(1,1);
-	SetHighColor(normal);
-	FillRect(r);
-	
-	SetHighColor(arrow);
-	FillTriangle(fTrianglePoint1,fTrianglePoint2,fTrianglePoint3);
-	
-	r.InsetBy(-1,-1);
-	SetHighColor(dark);
-	StrokeLine(r.LeftBottom(),r.RightBottom());
-	StrokeLine(r.RightTop(),r.RightBottom());
-	StrokeLine(fTrianglePoint2,fTrianglePoint3);
-	StrokeLine(fTrianglePoint1,fTrianglePoint3);
-	
-	SetHighColor(light);
-	StrokeLine(r.LeftTop(),r.RightTop());
-	StrokeLine(r.LeftTop(),r.LeftBottom());
-	
-	SetHighColor(arrow2);
-	StrokeLine(fTrianglePoint1,fTrianglePoint2);
+	*/
+
+	SetDrawingMode(B_OP_ALPHA);
+	switch (fDirection) {
+		case ARROW_LEFT:
+			be_control_look->DrawArrowShape(this,r,r,arrowColor,
+				BControlLook::B_LEFT_ARROW,B_DARKEN_3_TINT);
+		case ARROW_RIGHT:
+			be_control_look->DrawArrowShape(this,r,r,arrowColor,
+				BControlLook::B_RIGHT_ARROW,B_DARKEN_3_TINT);
+		case ARROW_UP:
+			be_control_look->DrawArrowShape(this,r,r,arrowColor,
+				BControlLook::B_UP_ARROW, B_DARKEN_3_TINT);
+		default:
+			be_control_look->DrawArrowShape(this,r,r,arrowColor,
+				BControlLook::B_DOWN_ARROW, B_DARKEN_3_TINT);
+	}
 }
 
 

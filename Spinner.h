@@ -32,6 +32,8 @@ public:
 									uint32 resize = B_FOLLOW_LEFT | B_FOLLOW_TOP,
 									uint32 flags = B_WILL_DRAW | B_NAVIGABLE);
 							Spinner(BMessage *data);
+							Spinner(const char *name, const char *label, BMessage *msg,
+									uint32 flags);
 	virtual					~Spinner(void);
 	
 	static	BArchivable *	Instantiate(BMessage *data);
