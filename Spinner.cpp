@@ -573,10 +573,7 @@ SpinnerArrowButton::~SpinnerArrowButton(void)
 void
 SpinnerArrowButton::MouseDown(BPoint pt)
 {
-	if (fEnabled == false)
-		return;
-
-	if (!IsEnabled())
+	if (fEnabled == false || !IsEnabled())
 		return;
 
 	// TODO: Handle asynchronous window controls flag
@@ -697,37 +694,34 @@ SpinnerArrowButton::MouseMoved(BPoint pt, uint32 transit, const BMessage *msg)
 void
 SpinnerArrowButton::Draw(BRect update)
 {
+	PushState();
 	rgb_color c = ui_color(B_PANEL_BACKGROUND_COLOR);
 	BRect r(Bounds());
+	r.OffsetBy(-1,0);
 
-	rgb_color arrow;
+	float tint;
+
 	if (!fEnabled)
-		arrow = tint_color(c, B_DARKEN_1_TINT);
+		tint = B_DARKEN_1_TINT;
 	else if (fMouseDown)
-		arrow = tint_color(c, B_DARKEN_MAX_TINT);
+		tint = B_DARKEN_MAX_TINT;
 	else
-		arrow = tint_color(c, B_DARKEN_3_TINT);
-		
-	BPoint point1;
-	BPoint point2;
-	BPoint point3;
+		tint = B_DARKEN_3_TINT;
+
+	rgb_color border = tint_color(c, tint);
+
+	SetHighColor(border);
+	StrokeRect(r);
+
 	if (fDirection == ARROW_UP) {
-		point1 = BPoint(roundf((r.RightTop().x - r.LeftTop().x )/2),
-			r.RightTop().y);
-		point2 = r.LeftBottom();
-		point3 = r.RightBottom();	
+		be_control_look->DrawArrowShape(this,r,update,c,
+			BControlLook::B_UP_ARROW,0,tint);
 	} else {
-		point1 = r.LeftTop();
-		point2 = r.RightTop();
-		point3 = BPoint(roundf((r.RightBottom().x - r.LeftBottom().x) /2),
-			r.RightBottom().y);
+		be_control_look->DrawArrowShape(this,r,update,c,
+			BControlLook::B_DOWN_ARROW,0,tint);
 	}
-	
-	rgb_color highColor = HighColor();
-	SetHighColor(arrow);
-	FillTriangle(point1, point2, point3);
-	SetHighColor(highColor);
-}	
+	PopState();
+}
 
 
 void

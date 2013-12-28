@@ -12,9 +12,9 @@ SpinnerApp::SpinnerApp()
 	:
 	BApplication("application/x-vnd.SpinControl")
 {
-	BRect frame(50,50,175,100);
+	BRect frame(50,50,200,100);
 	BWindow* window = new BWindow(frame,"SpinControl", B_TITLED_WINDOW,
-		B_QUIT_ON_WINDOW_CLOSE | B_NOT_RESIZABLE | B_NOT_ZOOMABLE);
+		B_QUIT_ON_WINDOW_CLOSE );//| B_NOT_RESIZABLE | B_NOT_ZOOMABLE);
 
 	Spinner* spinner = new Spinner(window->Bounds(), "Spinner",
 		"Variable: ", NULL);
