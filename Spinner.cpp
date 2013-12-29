@@ -579,9 +579,9 @@ SpinnerArrowButton::~SpinnerArrowButton(void)
 void
 SpinnerArrowButton::MouseDown(BPoint pt)
 {
-	if (fEnabled == false || !IsEnabled())
+	if (fEnabled == false)
 		return;
-
+	fParent->MakeFocus(true);
 	MouseDownThread<SpinnerArrowButton>::TrackMouse(this, 
 		&SpinnerArrowButton::_DoneTracking, &SpinnerArrowButton::_Track);
 }
@@ -630,7 +630,7 @@ SpinnerArrowButton::_ModifyValue()
 void
 SpinnerArrowButton::_DoneTracking(BPoint point)
 {
-	if (!Bounds().Contains(point) || !fMouseDown) {
+	if (!Bounds().Contains(point) || fMouseDown) {
 		fMouseDown = false;
 		return;
 	}
@@ -653,6 +653,8 @@ SpinnerArrowButton::_Track(BPoint point, uint32)
 void
 SpinnerArrowButton::MouseUp(BPoint pt)
 {
+	fParent->MakeFocus(false);
+
 	if (fEnabled) {
 		fMouseDown = false;
 
