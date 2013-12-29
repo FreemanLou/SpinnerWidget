@@ -4,6 +4,10 @@
  */
 #include "SpinnerApp.h"
 
+#include <Layout.h>
+#include <GroupView.h>
+#include <GroupLayout.h>
+#include <GroupLayoutBuilder.h>
 #include <Window.h>
 
 #include "Spinner.h"
@@ -15,10 +19,18 @@ SpinnerApp::SpinnerApp()
 	BRect frame(50,50,200,100);
 	BWindow* window = new BWindow(frame,"SpinControl", B_TITLED_WINDOW,
 		B_QUIT_ON_WINDOW_CLOSE );//| B_NOT_RESIZABLE | B_NOT_ZOOMABLE);
-
+	
 	Spinner* spinner = new Spinner(window->Bounds(), "Spinner",
 		"Variable: ", NULL);
+	/*
+	BGroupView* groupView = new BGroupView(B_HORIZONTAL, 1);
 	
+	BGroupLayout* layout = groupView->GroupLayout();
+	layout->Add(spinner);
+	*/
+
+	//groupView->AddChild(spinner);
+
 	spinner->SetRange(-500, 500);
 	spinner->SetValue(0);
 	spinner->SetSteps(5);

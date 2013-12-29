@@ -16,6 +16,8 @@
 #include <MessageFilter.h>
 #include <PropertyInfo.h>
 
+#include "Thread.h"
+
 #include <math.h>
 
 static property_info sProperties[] = {
@@ -95,14 +97,17 @@ public:
 					bool	IsEnabled(void) const { return fEnabled; }
 	
 private:
-	arrow_direction		fDirection;
-	BPoint				fTrianglePoint1,
-						fTrianglePoint2,
-						fTrianglePoint3;
-	float				fHeight;
-	Spinner				*fParent;
-	bool				fMouseDown;
-	bool				fEnabled;
+		arrow_direction		fDirection;
+		float				fHeight;
+		Spinner				*fParent;
+		bool				fMouseDown;
+		bool				fEnabled;
+		bool				fMouseOver;
+
+private:
+		void				_DoneTracking(BPoint point);
+		void				_Track(BPoint point, uint32);
+		void				_ModifyValue();
 };
 
 class SpinnerPrivateData
@@ -561,6 +566,7 @@ SpinnerArrowButton::SpinnerArrowButton(BPoint location, const char *name,
 	fEnabled = true;
 	fHeight = height;
 	fMouseDown = false;
+	fMouseOver = false;
 	SetViewColor(ui_color(B_PANEL_BACKGROUND_COLOR));
 }
 
@@ -576,79 +582,71 @@ SpinnerArrowButton::MouseDown(BPoint pt)
 	if (fEnabled == false || !IsEnabled())
 		return;
 
-	// TODO: Handle asynchronous window controls flag
-//	if (Window()->Flags() & B_ASYNCHRONOUS_CONTROLS)
-//	{
-//		SetTracking(true);
-//	SetMouseEventMask(B_POINTER_EVENTS, B_LOCK_WINDOW_FOCUS);
-// 	}
-// 	else
- //	{
-//		BRect bounds = Bounds();
-		uint32 buttons;
-		BPoint point;
+	MouseDownThread<SpinnerArrowButton>::TrackMouse(this, 
+		&SpinnerArrowButton::_DoneTracking, &SpinnerArrowButton::_Track);
+}
 
-		int32 step = fParent->GetSteps();
-		
-		int32 newvalue = fParent->Value();
-		
-		int32 waitvalue = 250000;
-		
-		do {
-			if (fDirection == ARROW_UP) {
-				fParent->fPrivateData->fArrowDown = ARROW_UP;
-				newvalue += step;
-			} else {
-				fParent->fPrivateData->fArrowDown = ARROW_DOWN;
-				newvalue -= step;
-			}
-			
-			if (newvalue >= fParent->GetMin() && newvalue <= fParent->GetMax()) {
-				// new value is in range, so set it and go
-				fParent->SetValue(newvalue);
-				fParent->Invoke();
-//				fParent->Invalidate();
-				fParent->ValueChanged(fParent->Value());
-			} else {
-				// new value is out of bounds. Clip to range if current value is not
-				// at the end of its range
-				if (newvalue < fParent->GetMin() && 
-						fParent->Value() != fParent->GetMin()) {
-					fParent->SetValue(fParent->GetMin());
-					fParent->Invoke();
-//					fParent->Invalidate();
-					fParent->ValueChanged(fParent->Value());
-				} else if (newvalue>fParent->GetMax() && 
-							fParent->Value() != fParent->GetMax()) {
-					fParent->SetValue(fParent->GetMax());
-					fParent->Invoke();
-//					fParent->Invalidate();
-					fParent->ValueChanged(fParent->Value());
-				} else {
-					// cases which go here are if new value is <minimum and value already at
-					// minimum or if > maximum and value already at maximum
-					return;
-				}
-			}
-			
-			Window()->UpdateIfNeeded();
-			
-			snooze(waitvalue);
-			
-			GetMouse(&point, &buttons, true);
-			
-// 			bool inside = bounds.Contains(point);
-			
-//			if ((Value() == B_CONTROL_ON) != inside)
-//				SetValue(inside ? B_CONTROL_ON : B_CONTROL_OFF);
-			
-			if (waitvalue > 150000)
-				waitvalue = 150000;
-				
-		} while (buttons != 0);
 
-//	}
+void
+SpinnerArrowButton::_ModifyValue()
+{
+	int32 step = fParent->GetSteps();
+	int32 newvalue = fParent->Value();
 
+	if (fDirection == ARROW_UP) {
+		fParent->fPrivateData->fArrowDown = ARROW_UP;
+		newvalue += step;
+	} else {
+		fParent->fPrivateData->fArrowDown = ARROW_DOWN;
+		newvalue -= step;
+	}	
+
+	if (newvalue >= fParent->GetMin() && newvalue <= fParent->GetMax()) {
+		// new value is in range, so set it and go
+		fParent->SetValue(newvalue);
+		fParent->Invoke();
+		fParent->ValueChanged(fParent->Value());
+	} else {
+		// new value is out of bounds. Clip to range if current value is not
+		// at the end of its range
+		if (newvalue < fParent->GetMin() && 
+			fParent->Value() != fParent->GetMin()) {
+			fParent->SetValue(fParent->GetMin());
+			fParent->Invoke();
+			fParent->ValueChanged(fParent->Value());
+		} else if (newvalue>fParent->GetMax() && 
+			fParent->Value() != fParent->GetMax()) {
+			fParent->SetValue(fParent->GetMax());
+			fParent->Invoke();
+			fParent->ValueChanged(fParent->Value());
+		} else {
+			// cases which go here are if new value is <minimum and value already at
+			// minimum or if > maximum and value already at maximum
+			return;
+		}
+	}
+}
+
+void
+SpinnerArrowButton::_DoneTracking(BPoint point)
+{
+	if (!Bounds().Contains(point) || !fMouseDown) {
+		fMouseDown = false;
+		return;
+	}
+}
+
+
+void
+SpinnerArrowButton::_Track(BPoint point, uint32)
+{
+	if (Bounds().Contains(point)) {
+		fMouseDown = true;
+		_ModifyValue();
+	} else
+		fMouseDown = false;
+
+	Invalidate();
 }
 
 
@@ -657,7 +655,7 @@ SpinnerArrowButton::MouseUp(BPoint pt)
 {
 	if (fEnabled) {
 		fMouseDown = false;
-		
+
 		if (fParent) {
 			fParent->fPrivateData->fArrowDown = ARROW_NONE;
 			fParent->fPrivateData->fExitRepeater = true;
@@ -672,22 +670,23 @@ SpinnerArrowButton::MouseMoved(BPoint pt, uint32 transit, const BMessage *msg)
 {
 	if (fEnabled == false)
 		return;
-	
-	if (transit == B_ENTERED_VIEW) {
+
+	if (transit == B_ENTERED_VIEW || transit == B_INSIDE_VIEW) {
 		BPoint point;
 		uint32 buttons;
 		GetMouse(&point,&buttons);
-		if ((buttons & B_PRIMARY_MOUSE_BUTTON) == 0 &&
-			(buttons & B_SECONDARY_MOUSE_BUTTON) == 0 &&
-			(buttons & B_PRIMARY_MOUSE_BUTTON) == 0 )
-			fMouseDown = false;
+		if (buttons == 0 && Bounds().Contains(point))
+			fMouseOver = true;
 		else
-			fMouseDown = true;
-		Invalidate();
+			fMouseOver = false;
+		if(!fMouseDown)
+			Invalidate();
 	}
-	
-	if (transit == B_EXITED_VIEW || transit == B_OUTSIDE_VIEW)
+
+	if (transit == B_EXITED_VIEW || transit == B_OUTSIDE_VIEW) {
+		fMouseOver = false;
 		MouseUp(Bounds().LeftTop());
+	}
 }
 
 
@@ -704,13 +703,13 @@ SpinnerArrowButton::Draw(BRect update)
 	if (!fEnabled)
 		tint = B_DARKEN_1_TINT;
 	else if (fMouseDown)
-		tint = B_DARKEN_MAX_TINT;
-	else
+		tint = B_DARKEN_MAX_TINT;	
+	else if (fMouseOver)
 		tint = B_DARKEN_3_TINT;
+	else
+		tint = B_DARKEN_2_TINT;
 
-	rgb_color border = tint_color(c, tint);
-
-	SetHighColor(border);
+	SetHighColor(tint_color(c, tint));
 	StrokeRect(r);
 
 	if (fDirection == ARROW_UP) {
