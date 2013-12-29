@@ -32,7 +32,7 @@ SpinnerApp::SpinnerApp()
 	spinner->SetValue(0);
 	spinner->SetSteps(5);
 
-	//window->AddChild(groupView);
+	window->AddChild(groupView);
 	window->Show();
 }
 
