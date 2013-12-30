@@ -33,14 +33,15 @@ public:
 									uint32 flags = B_WILL_DRAW | B_NAVIGABLE);
 							Spinner(BMessage *data);
 							Spinner(const char *name, const char *label, BMessage *msg,
-									uint32 flags);
+									uint32 resize = B_FOLLOW_LEFT | B_FOLLOW_TOP, 
+									uint32 flags = B_WILL_DRAW | B_NAVIGABLE);
 	virtual					~Spinner(void);
 	
-	static	BArchivable *	Instantiate(BMessage *data);
+	static	BArchivable*	Instantiate(BMessage *data);
 	virtual	status_t		Archive(BMessage *data, bool deep = true) const;
 		
 	virtual	status_t		GetSupportedSuites(BMessage *msg);
-	virtual BHandler *		ResolveSpecifier(BMessage *msg, int32 index,
+	virtual BHandler*		ResolveSpecifier(BMessage *msg, int32 index,
 											BMessage *specifier, int32 form,
 											const char *property);
 	
@@ -67,25 +68,41 @@ public:
 	
 	virtual	void			SetValue(int32 value);
 	virtual	void			SetLabel(const char *text);
-			BTextControl *	TextControl(void) const { return fTextControl; }
+			BTextControl*	TextControl(void) const { return fTextControl; }
 	
 	virtual	void			SetEnabled(bool value);
-	
+	virtual	void			SetDivider(float position);
+			float			Divider() const;
+			void			DoLayout();
+			BLayoutItem*	CreateLabelLayoutItem();
+			BLayoutItem*	CreateTextFieldLayoutItem();
+
 private:
+			class			LabelLayoutItem;
+			class			TextFieldLayoutItem;
+			struct			LayoutData;
 			void			_InitObject(void);
+			void			_UpdateFrame();
+			void			_ValidateLayoutData();
+			float			_TextFieldOffset();
 			
-	friend	class SpinnerArrowButton;
-	friend	class SpinnerPrivateData;
+	friend	class			SpinnerArrowButton;
+	friend	class			SpinnerPrivateData;
+	friend	class			LabelLayoutItem;
+	friend	class			TextFieldLayoutItem;
+	friend	struct			LayoutData;
 	
-	BTextControl		*fTextControl;
-	SpinnerArrowButton	*fUpButton,
-						*fDownButton;
-	SpinnerPrivateData	*fPrivateData;
-	
-	int32				fStep;
-	int32				fMin,
-						fMax;
-	SpinnerMsgFilter	*fFilter;
+	BTextControl*			fTextControl;
+	SpinnerArrowButton*		fUpButton;
+	SpinnerArrowButton*		fDownButton;
+	SpinnerPrivateData*		fPrivateData;
+	LayoutData*				fLayoutData;
+	int32					fStep;
+	int32					fMin;
+	int32					fMax;
+	float					fDivider;
+	SpinnerMsgFilter		*fFilter;
+			Spinner&			operator=(const Spinner& other);
 };
 
 #endif

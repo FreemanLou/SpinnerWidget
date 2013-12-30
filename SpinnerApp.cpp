@@ -5,6 +5,7 @@
 #include "SpinnerApp.h"
 
 #include <Layout.h>
+#include <LayoutBuilder.h>
 #include <GroupView.h>
 #include <GroupLayout.h>
 #include <GroupLayoutBuilder.h>
@@ -20,19 +21,17 @@ SpinnerApp::SpinnerApp()
 	BWindow* window = new BWindow(frame,"SpinControl", B_TITLED_WINDOW,
 		B_QUIT_ON_WINDOW_CLOSE );//| B_NOT_RESIZABLE | B_NOT_ZOOMABLE);
 	
-	
-	Spinner* spinner = new Spinner(window->Bounds(), "Spinner",
-		"Variable: ", NULL);
-
-	BGroupView* groupView = new BGroupView(B_VERTICAL, 1);
-	groupView->AddChild(spinner);
+	Spinner* spinner = new Spinner("Spinner",
+		"Variable: ", NULL, B_WILL_DRAW);
 	
 	spinner->SetExplicitMinSize(BSize(60,60));
 	spinner->SetRange(-500, 500);
 	spinner->SetValue(0);
 	spinner->SetSteps(5);
 
-	window->AddChild(groupView);
+	BLayoutBuilder::Group<>(window, B_VERTICAL, 0)
+		.Add(spinner)
+	.End();
 	window->Show();
 }
 

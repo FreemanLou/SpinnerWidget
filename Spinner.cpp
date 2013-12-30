@@ -6,7 +6,10 @@
 	Original BScrollBarButton class courtesy Haiku project
 */
 #include "Spinner.h"
+#include <AbstractLayoutItem.h>
 #include <ControlLook.h>
+#include <LayoutUtils.h>
+#include <MenuItem.h>
 #include <String.h>
 #include <ScrollBar.h>
 #include <Window.h>
@@ -15,6 +18,8 @@
 #include <Box.h>
 #include <MessageFilter.h>
 #include <PropertyInfo.h>
+
+#include <algorithm>
 
 #include "Thread.h"
 
@@ -70,6 +75,11 @@ typedef enum {
 	ARROW_DOWN,
 	ARROW_NONE
 } arrow_direction;
+
+
+const char* const kFrameField = "Spinner:layoutItem:frame";
+const char*	const kLabelItemField = "Spinner:textFieldItem";
+const char* const kTextFieldItemField = "Spinner:labelItem";
 
 
 class SpinnerMsgFilter : public BMessageFilter
@@ -157,6 +167,323 @@ public:
 };
 
 
+class Spinner::LabelLayoutItem : public BAbstractLayoutItem {
+public:
+							LabelLayoutItem(Spinner* parent);
+							LabelLayoutItem(BMessage* archive);
+							
+	virtual	bool			IsVisible();
+	virtual	void			SetVisible(bool visible);
+	
+	virtual	BRect			Frame();
+	virtual	void			SetFrame(BRect frame);
+	
+			void			SetParent(Spinner* parent);
+	virtual	BView*			View();
+	
+	virtual BSize			BaseMinSize();
+	virtual BSize			BaseMaxSize();
+	virtual	BSize			BasePreferredSize();
+	virtual	BAlignment		BaseAlignment();
+	
+	virtual status_t		Archive(BMessage* into, bool deep = true) const;
+	static	BArchivable*	Instantiate(BMessage* from);
+	
+private:
+			Spinner*		fParent;
+			BRect			fFrame;
+};
+
+
+class Spinner::TextFieldLayoutItem : public BAbstractLayoutItem {
+public:
+							TextFieldLayoutItem(Spinner* parent);
+							TextFieldLayoutItem(BMessage* archive);
+							
+	virtual	bool			IsVisible();
+	virtual	void			SetVisible(bool visible);
+	
+	virtual	BRect			Frame();
+	virtual	void			SetFrame(BRect frame);
+	
+			void			SetParent(Spinner* parent);
+	virtual	BView*			View();
+	
+	virtual BSize			BaseMinSize();
+	virtual BSize			BaseMaxSize();
+	virtual	BSize			BasePreferredSize();
+	virtual	BAlignment		BaseAlignment();
+	
+	virtual status_t		Archive(BMessage* into, bool deep = true) const;
+	static	BArchivable*	Instantiate(BMessage* from);
+	
+private:
+			Spinner*		fParent;
+			BRect			fFrame;
+};
+
+
+struct Spinner::LayoutData {
+	LayoutData()
+		:
+		labelLayoutItem(NULL),
+		textFieldLayoutItem(NULL),
+		previousHeight(-1),
+		valid(false)
+	{
+	}
+	
+	BRect					labelBox;
+	
+	LabelLayoutItem*		labelLayoutItem;
+	TextFieldLayoutItem*	textFieldLayoutItem;
+	float					previousHeight;
+	
+	font_height				fontInfo;
+	float					labelWidth;
+	float					labelHeight;
+	BSize					textFieldHeight;
+	BSize					textFieldMin;
+	BSize					minSize;
+	BSize					maxSize;
+	BSize					min;
+	BAlignment				alignment;
+	bool					valid;
+};
+
+
+Spinner::LabelLayoutItem::LabelLayoutItem(Spinner* parent)
+	:
+	fParent(parent),
+	fFrame()
+{
+}
+
+
+Spinner::LabelLayoutItem::LabelLayoutItem(BMessage* from)
+	:
+	BAbstractLayoutItem(from),
+	fParent(NULL),
+	fFrame()
+{
+	from->FindRect(kFrameField, &fFrame);
+}
+
+
+bool
+Spinner::LabelLayoutItem::IsVisible()
+{
+	return !fParent->IsHidden(fParent);	
+}
+
+
+void
+Spinner::LabelLayoutItem::SetVisible(bool visible)
+{
+}
+
+
+BRect
+Spinner::LabelLayoutItem::Frame()
+{
+	return fFrame;	
+}
+
+
+void
+Spinner::LabelLayoutItem::SetFrame(BRect frame)
+{
+	fFrame = frame;
+	fParent->_UpdateFrame();	
+}
+
+
+void
+Spinner::LabelLayoutItem::SetParent(Spinner* parent)
+{
+	fParent = parent;	
+}
+
+
+BView*
+Spinner::LabelLayoutItem::View()
+{
+	return fParent;
+}
+
+
+BSize
+Spinner::LabelLayoutItem::BaseMinSize()
+{
+	fParent->_ValidateLayoutData();
+
+	if (!fParent->Label())
+		return BSize(-1,-1);
+	
+	return BSize(fParent->fLayoutData->labelWidth + 5,
+		fParent->fLayoutData->labelHeight);
+}
+
+
+BSize
+Spinner::LabelLayoutItem::BaseMaxSize()
+{
+	return BaseMinSize();	
+}
+
+
+BSize
+Spinner::LabelLayoutItem::BasePreferredSize()
+{
+	return BaseMinSize();
+}
+
+
+BAlignment
+Spinner::LabelLayoutItem::BaseAlignment()
+{
+	return BAlignment(B_ALIGN_USE_FULL_WIDTH, B_ALIGN_USE_FULL_HEIGHT);
+}
+
+
+status_t
+Spinner::LabelLayoutItem::Archive(BMessage* into, bool deep) const
+{
+	BArchiver archiver(into);
+	status_t err = BAbstractLayoutItem::Archive(into, deep);
+
+	if (err == B_OK)
+		err = into->AddRect(kFrameField, fFrame);
+
+	return archiver.Finish(err);
+}
+
+
+BArchivable*
+Spinner::LabelLayoutItem::Instantiate(BMessage* from)
+{
+	if (validate_instantiation(from, "Spinner::LabelLayoutItem"))
+		return new LabelLayoutItem(from);
+	return NULL;
+}
+
+
+Spinner::TextFieldLayoutItem::TextFieldLayoutItem(Spinner* parent)
+	:
+	fParent(parent),
+	fFrame()
+{
+	SetExplicitMaxSize(BSize(B_SIZE_UNLIMITED, B_SIZE_UNSET));
+}
+
+
+Spinner::TextFieldLayoutItem::TextFieldLayoutItem(BMessage* from)
+	:
+	BAbstractLayoutItem(from),
+	fParent(NULL),
+	fFrame()
+{
+	from->FindRect(kFrameField, &fFrame);
+}
+
+
+bool
+Spinner::TextFieldLayoutItem::IsVisible()
+{
+	return !fParent->IsHidden(fParent);	
+}
+
+
+void
+Spinner::TextFieldLayoutItem::SetVisible(bool visible)
+{
+}
+
+
+BRect
+Spinner::TextFieldLayoutItem::Frame()
+{
+	return fFrame;	
+}
+
+
+void
+Spinner::TextFieldLayoutItem::SetFrame(BRect frame)
+{
+	fFrame = frame;
+	fParent->_UpdateFrame();	
+}
+
+
+void
+Spinner::TextFieldLayoutItem::SetParent(Spinner* parent)
+{
+	fParent = parent;	
+}
+
+
+BView*
+Spinner::TextFieldLayoutItem::View()
+{
+	return fParent;
+}
+
+
+BSize
+Spinner::TextFieldLayoutItem::BaseMinSize()
+{
+	fParent->_ValidateLayoutData();
+
+	BSize size = fParent->fLayoutData->textFieldMin;
+	size.width += B_V_SCROLL_BAR_WIDTH * 2;
+	size.height += fParent->fTextControl->TextView()->LineHeight(0) + 4.0;
+	return size;
+}
+
+
+BSize
+Spinner::TextFieldLayoutItem::BaseMaxSize()
+{
+	return BaseMinSize();	
+}
+
+
+BSize
+Spinner::TextFieldLayoutItem::BasePreferredSize()
+{
+	return BaseMinSize();
+}
+
+
+BAlignment
+Spinner::TextFieldLayoutItem::BaseAlignment()
+{
+	return BAlignment(B_ALIGN_USE_FULL_WIDTH, B_ALIGN_USE_FULL_HEIGHT);
+}
+
+
+status_t
+Spinner::TextFieldLayoutItem::Archive(BMessage* into, bool deep) const
+{
+	BArchiver archiver(into);
+	status_t err = BAbstractLayoutItem::Archive(into, deep);
+
+	if (err == B_OK)
+		err = into->AddRect(kFrameField, fFrame);
+
+	return archiver.Finish(err);
+}
+
+
+BArchivable*
+Spinner::TextFieldLayoutItem::Instantiate(BMessage* from)
+{
+	if (validate_instantiation(from, "Spinner::TextFieldLayoutItem"))
+		return new LabelLayoutItem(from);
+	return NULL;
+}
+
+
 Spinner::Spinner(BRect frame, const char *name, const char *label, BMessage *msg,
 				uint32 resize,uint32 flags)
 	:
@@ -183,10 +510,10 @@ Spinner::Spinner(BMessage *data)
 }
 
 
-Spinner::Spinner(const char *name, const char *label, BMessage *msg,
-	uint32 flags)
+Spinner::Spinner(const char *name, const char *label, BMessage *msg
+	,uint32 resize, uint32 flags)
 	:
-	BControl(name, label, msg,flags),
+	BControl(BRect(0,0,100,15),name, label, msg, resize, flags),
 	fStep(1),
 	fMin(0),
 	fMax(100)
@@ -303,7 +630,7 @@ Spinner::GetSupportedSuites(BMessage *msg)
 }
 
 
-BHandler *
+BHandler*
 Spinner::ResolveSpecifier(BMessage *msg, int32 index, BMessage *specifier,
 									int32 form, const char *property)
 {
@@ -431,6 +758,73 @@ Spinner::ResizeToPreferred(void)
 
 
 void
+Spinner::_UpdateFrame()
+{
+	if (fLayoutData->labelLayoutItem == NULL
+		|| fLayoutData->textFieldLayoutItem == NULL)
+		return;
+
+	BRect labelFrame = fLayoutData->labelLayoutItem->Frame();
+	BRect textFrame = fLayoutData->textFieldLayoutItem->Frame();
+
+	if (!labelFrame.IsValid() || !textFrame.IsValid())
+		return;
+
+	fDivider = textFrame.left - labelFrame.left;
+	
+	MoveTo(labelFrame.left, labelFrame.top);
+	BSize oldSize = Bounds().Size();
+	ResizeTo(textFrame.left + textFrame.Width() - labelFrame.left,
+		textFrame.top + textFrame.Height() - labelFrame.top);
+	BSize newSize = Bounds().Size();
+	
+	if (newSize != oldSize)
+		Relayout();
+}
+
+
+void
+Spinner::_ValidateLayoutData()
+{
+	if (fLayoutData->valid)
+		return;
+	font_height fontHeight = fLayoutData->fontInfo;
+	GetFontHeight(&fontHeight);
+
+	if (Label() != NULL) {
+		fLayoutData->labelWidth = 25.0f + B_V_SCROLL_BAR_WIDTH
+			+ ceilf(fTextControl->StringWidth(fTextControl->Label()));
+		fLayoutData->labelHeight =  ceil(fontHeight.ascent
+			+ fontHeight.descent + fontHeight.leading);
+	} else {
+		fLayoutData->labelWidth = 0;
+		fLayoutData->labelHeight = 0;	
+	}
+
+	float divider = 0;
+	if (fLayoutData->labelWidth > 0)
+		divider = fLayoutData->labelWidth + 5;
+		
+	if ((Flags() & B_SUPPORTS_LAYOUT) == 0)
+		divider = std::max(divider,fDivider);
+	
+	fLayoutData->textFieldHeight = fTextControl->MinSize();
+	BSize min(fLayoutData->textFieldMin);
+	min.height =  fTextControl->TextView()->LineHeight(0) + 4.0;
+	min.width = 25.0f + ceilf(fTextControl->StringWidth(fTextControl->Text()));
+	
+	if (divider > 0)
+		min.width += divider;
+	if (fLayoutData->labelHeight > min.height)
+		min.height = fLayoutData->labelHeight;
+		
+	fLayoutData->min = min;
+	fLayoutData->valid = true;
+	ResetLayoutInvalidation();
+}
+
+
+void
 Spinner::SetSteps(int32 stepsize)
 {
 	fStep = stepsize;
@@ -485,9 +879,101 @@ Spinner::SetEnabled(bool value)
 
 
 void
+Spinner::SetDivider(float position)
+{
+	position = roundf(position);
+	
+	float delta = fDivider - position;
+	if (delta == 0.0f)
+		return;
+
+	fDivider = position;
+
+	BRect rect = fTextControl->TextView()->Frame();
+	fTextControl->TextView()->MoveTo(_TextFieldOffset(), B_V_SCROLL_BAR_WIDTH);
+	rect = rect | fTextControl->TextView()->Frame(); 
+	
+	Invalidate(rect);
+}
+
+
+float
+Spinner::Divider() const
+{
+	return fDivider;
+}
+
+
+void
 Spinner::MakeFocus(bool value)
 {
 	fTextControl->MakeFocus(value);
+}
+
+
+float
+Spinner::_TextFieldOffset()
+{
+	return std::max(fDivider + B_V_SCROLL_BAR_WIDTH, B_V_SCROLL_BAR_WIDTH);
+}
+
+
+void
+Spinner::DoLayout()
+{
+	if ((Flags() & B_SUPPORTS_LAYOUT) == 0)
+		return;
+	
+	if (GetLayout()) {
+		BView::DoLayout();
+		return;	
+	}
+	
+	_ValidateLayoutData();
+
+	BSize size(Bounds().Size());
+	if (size.width < fLayoutData->min.width)
+		size.width = fLayoutData->min.width;
+	if (size.height < fLayoutData->min.height)
+		size.height = fLayoutData->min.height;
+
+	float divider = 0;
+	if (fLayoutData->labelLayoutItem != NULL
+		&& fLayoutData->textFieldLayoutItem != NULL
+		&& fLayoutData->labelLayoutItem->Frame().IsValid()
+		&& fLayoutData->textFieldLayoutItem->Frame().IsValid()) {
+		divider = fLayoutData->textFieldLayoutItem->Frame().left
+			- fLayoutData->labelLayoutItem->Frame().left;	
+	} else if (fLayoutData->labelWidth > 0)
+		divider = fLayoutData->labelWidth + 4;
+	
+	BRect rect(fTextControl->TextView()->Frame());
+	BRect textViewFrame(divider + B_V_SCROLL_BAR_WIDTH, B_V_SCROLL_BAR_WIDTH,
+		size.width - B_V_SCROLL_BAR_WIDTH, size.height - B_V_SCROLL_BAR_WIDTH);
+
+	BLayoutUtils::AlignInFrame(fTextControl->TextView(), textViewFrame);
+	fDivider = divider;
+	
+	rect = rect | fTextControl->TextView()->Frame();
+	Invalidate(rect);
+}
+
+
+BLayoutItem*
+Spinner::CreateLabelLayoutItem()
+{
+	if (fLayoutData->labelLayoutItem == NULL)
+		fLayoutData->labelLayoutItem = new LabelLayoutItem(this);
+	return fLayoutData->labelLayoutItem;
+}
+
+
+BLayoutItem*
+Spinner::CreateTextFieldLayoutItem()
+{
+	if (fLayoutData->textFieldLayoutItem == NULL)
+		fLayoutData->textFieldLayoutItem = new TextFieldLayoutItem(this);
+	return fLayoutData->textFieldLayoutItem;
 }
 
 
